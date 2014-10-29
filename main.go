@@ -1,11 +1,12 @@
 package main
 
 func main() {
-    amigo := new(Amigo)
+	amigo := new(Amigo)
 
-    amigo.host      = "irc.freenode.org:6667"
-    amigo.channel   = "#amigo-bot"
-    amigo.nick      = "amigobot"
+	host    := "irc.freenode.org:6667"
+	channel := "#amigo-bot"
+	nick    := "amigobot"
+    master  := "peiiion"
 
-    amigo.EhAmigo()
+	amigo.EhAmigo(host, channel, nick, master)
 }

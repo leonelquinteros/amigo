@@ -1,61 +1,77 @@
 package main
 
 import (
-    "fmt"
-    "errors"
-    "github.com/sorcix/irc"
+	"errors"
+	"github.com/sorcix/irc"
 )
 
 // This is the bot
 type Amigo struct {
-    // Connection params
-    host, channel, nick string
+	// Connection params
+	host, channel, nick, master string
 
-    // Connection handler
-    conn *irc.Conn
+	// Connection handler
+	conn *irc.Conn
 }
 
-// Bot starter
-func (self *Amigo) EhAmigo() {
-    err := self.Connect()
+// EhAmigo starts the bot.
+func (a *Amigo) EhAmigo(host, channel, nick, master string) {
+    // Config set
+    a.host      = host
+    a.channel   = channel
+    a.nick      = nick
+    a.master    = master
 
-    if err != nil {
-        fmt.Println("AMIGO ABORT!")
+    // Connect
+	err := a.connect()
+	if err != nil {
+		println("AMIGO ABORT! " + err.Error())
+		return
+	}
 
-        return
-    }
-
-    self.Listen()
+    // Start
+    go a.init()
+    a.listen()
 }
 
-
-// IRC connect
-func (self *Amigo) Connect() (e error) {
-    c, err := irc.Dial(self.host)
-
-    if err != nil {
-        errMsg := "AMIGO ERROR: " + err.Error()
-        fmt.Println(errMsg)
-        return errors.New(errMsg)
-    }
-
-    self.conn = c
-
-    return nil
+// Send sends a raw IRC message over the active network stream.
+func (a *Amigo) Send(msg string) error {
+    return a.conn.Encode(irc.ParseMessage(msg))
 }
 
+// connect starts the IRC connection and stores the handler in conn.
+func (a *Amigo) connect() error {
+	c, err := irc.Dial(a.host)
 
-// Messages listener. Gets all the network stream and dispatches the messages.
-func (self *Amigo) Listen() {
-    for {
-        msg, err := self.conn.Decode()
+	if err != nil {
+		errMsg := "AMIGO ERROR: " + err.Error()
+		println(errMsg)
+		return errors.New(errMsg)
+	}
 
-        if err != nil {
-            fmt.Println("AMIGO ERROR: " + err.Error())
-            self.conn.Close()
-            break
-        }
+	a.conn = c
 
-        fmt.Println(msg)
-    }
+	return nil
+}
+
+// init sends IRC setup commands.
+func (a *Amigo) init() {
+    a.Send("NICK " + a.nick)
+    a.Send("USER " + a.nick + " 0 * :amigo")
+    a.Send("JOIN " + a.channel)
+}
+
+// listen gets all the network stream and dispatches the messages.
+func (a *Amigo) listen() {
+	for {
+		msg, err := a.conn.Decode()
+
+		if err != nil {
+			println("AMIGO ERROR: " + err.Error())
+			a.conn.Close()
+			break
+		}
+
+		println(msg.String())
+	}
 }
