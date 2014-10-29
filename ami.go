@@ -2,6 +2,9 @@ package main
 
 import (
 	"errors"
+    "log"
+    "strings"
+
 	"github.com/sorcix/irc"
 )
 
@@ -25,8 +28,7 @@ func (a *Amigo) EhAmigo(host, channel, nick, master string) {
 	// Connect
 	err := a.connect()
 	if err != nil {
-		println("AMIGO ABORT! " + err.Error())
-		return
+		log.Fatal(err.Error())
 	}
 
 	// Start
@@ -36,16 +38,19 @@ func (a *Amigo) EhAmigo(host, channel, nick, master string) {
 
 // Send sends a raw IRC message over the active network stream.
 func (a *Amigo) Send(msg string) error {
+    log.Println("-> " + msg)
+
 	return a.conn.Encode(irc.ParseMessage(msg))
 }
 
 // connect starts the IRC connection and stores the handler in conn.
 func (a *Amigo) connect() error {
+    log.Println("Connecting to " + a.host)
+
 	c, err := irc.Dial(a.host)
 
 	if err != nil {
 		errMsg := "AMIGO ERROR: " + err.Error()
-		println(errMsg)
 		return errors.New(errMsg)
 	}
 
@@ -65,13 +70,28 @@ func (a *Amigo) init() {
 func (a *Amigo) listen() {
 	for {
 		msg, err := a.conn.Decode()
-
 		if err != nil {
-			println("AMIGO ERROR: " + err.Error())
-			a.conn.Close()
-			break
+			log.Fatal("AMIGO ERROR: " + err.Error())
 		}
 
-		println(msg.String())
+        go a.handleMessage(msg)
 	}
+}
+
+// handleMessage gets messages received on the IRC network and parses them to recognize commands.
+func (a *Amigo) handleMessage(msg *irc.Message) {
+    log.Println(msg.String())
+    if msg.Prefix != nil {
+        log.Println("Nick: " + msg.Prefix.Name)
+        log.Println("User: " + msg.Prefix.User)
+        log.Println("Host: " + msg.Prefix.Host)
+    }
+    log.Println("Command: " + msg.Command)
+    log.Println("Params: " + strings.Join(msg.Params, " "))
+    log.Println("Trailing: " + msg.Trailing)
+
+    switch {
+        case msg.Command == "PING":
+            a.Send("PONG :" + msg.Trailing)
+    }
 }
