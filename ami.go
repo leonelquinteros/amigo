@@ -16,27 +16,27 @@ type Amigo struct {
 
 // EhAmigo starts the bot.
 func (a *Amigo) EhAmigo(host, channel, nick, master string) {
-    // Config set
-    a.host      = host
-    a.channel   = channel
-    a.nick      = nick
-    a.master    = master
+	// Config set
+	a.host = host
+	a.channel = channel
+	a.nick = nick
+	a.master = master
 
-    // Connect
+	// Connect
 	err := a.connect()
 	if err != nil {
 		println("AMIGO ABORT! " + err.Error())
 		return
 	}
 
-    // Start
-    go a.init()
-    a.listen()
+	// Start
+	go a.init()
+	a.listen()
 }
 
 // Send sends a raw IRC message over the active network stream.
 func (a *Amigo) Send(msg string) error {
-    return a.conn.Encode(irc.ParseMessage(msg))
+	return a.conn.Encode(irc.ParseMessage(msg))
 }
 
 // connect starts the IRC connection and stores the handler in conn.
@@ -56,9 +56,9 @@ func (a *Amigo) connect() error {
 
 // init sends IRC setup commands.
 func (a *Amigo) init() {
-    a.Send("NICK " + a.nick)
-    a.Send("USER " + a.nick + " 0 * :amigo")
-    a.Send("JOIN " + a.channel)
+	a.Send("NICK " + a.nick)
+	a.Send("USER " + a.nick + " 0 * :amigo")
+	a.Send("JOIN " + a.channel)
 }
 
 // listen gets all the network stream and dispatches the messages.
