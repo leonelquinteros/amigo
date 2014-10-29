@@ -11,8 +11,9 @@ const memoryFileName = "amigo-memory.xml"
 
 type Memory struct {
     // Connection params
-	Host, Channel, Nick, Master string
+	Host, Channel, Nick string
 
+    Masters []string
     Identities []string
 }
 
@@ -41,8 +42,7 @@ func (m *Memory) factoryMemory() {
     m.Host = "irc.freenode.org:6667"
 	m.Channel = "#amigo-bot"
 	m.Nick = "amigobot"
-	m.Master = "amigo-master"
-
+	m.Masters = []string{"amigo-master"}
     m.Identities = []string{"eh amigo!"}
 
     m.Write()
