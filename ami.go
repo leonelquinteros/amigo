@@ -39,6 +39,13 @@ func (a *Amigo) Send(msg string) error {
 	return a.conn.Encode(irc.ParseMessage(msg))
 }
 
+// SendTo sends a PRIVMSG command to a user or a channel.
+func (a *Amigo) SendTo(dest, msg string) error {
+    command := "PRIVMSG " + dest + " :" + msg
+
+    return a.Send(command)
+}
+
 // connect starts the IRC connection and stores the handler in conn.
 func (a *Amigo) connect() error {
     log.Println("Connecting to " + a.mem.Host)
@@ -86,8 +93,42 @@ func (a *Amigo) handleMessage(msg *irc.Message) {
     log.Println("Params: " + strings.Join(msg.Params, " "))
     log.Println("Trailing: " + msg.Trailing)
 
-    switch {
-        case msg.Command == "PING":
-            a.Send("PONG :" + msg.Trailing)
+    // Handle PING
+    if msg.Command == "PING" {
+        a.Send("PONG :" + msg.Trailing)
     }
+
+    // Handle message
+    if msg.Command == "PRIVMSG" {
+        // Are you talking to me?
+        for _, id := range a.mem.Identities {
+            if strings.HasPrefix(msg.Trailing, id) {
+                a.handleCommand(id, msg)
+                break
+            }
+        }
+
+        // TODO: Free talk
+
+    }
+}
+
+// handleCommand parses and dispatches commands sent directly to the bot using an identity.
+func (a *Amigo) handleCommand(identity string, msg *irc.Message) {
+    // TODO: Create Command struct
+    var dest, command, receiver string
+
+    receiver = strings.Join(msg.Params, " ")
+
+    // Talking on private?
+    if receiver == a.mem.Nick && msg.Prefix != nil {
+        dest = msg.Prefix.Name
+    } else {
+        // Talking on a channel
+        dest = receiver
+    }
+
+    command = strings.TrimSpace(msg.Trailing[len(identity):])
+
+    a.SendTo(dest, command + "?")
 }
