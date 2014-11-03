@@ -124,6 +124,9 @@ func (a *Amigo) handleCommand(msg *irc.Message) {
     switch {
     case cmd.Method == "say":
         a.Say(cmd)
+
+    case cmd.Method == "set master":
+        a.SetMaster(cmd)
     }
 }
 
@@ -133,5 +136,29 @@ func (a *Amigo) handleConversation(msg *irc.Message) {
 
 // Say works like an Echo. Takes a Command and returns the params to the sender.
 func (a *Amigo) Say(c *Command) {
-    a.SendTo(c.Dest, strings.Join(c.Params, " "))
+    text := strings.TrimSpace(strings.Join(c.Params, " "))
+
+    if text != "" {
+        a.SendTo(c.Dest, text)
+    }
+}
+
+func (a *Amigo) SetMaster(c *Command) {
+    master := c.Params[0]
+
+    if master == "" {
+        return
+    }
+
+    if a.mem.Masters != nil {
+        for _, m := range a.mem.Masters {
+            if m == master {
+                return
+            }
+        }
+    }
+
+    a.mem.Masters = append(a.mem.Masters, master)
+
+    a.SendTo(master, "Welcome, master " + master)
 }
