@@ -39,7 +39,7 @@ func (a *Amigo) Send(msg string) error {
 	return a.conn.Encode(irc.ParseMessage(msg))
 }
 
-// SendTo sends a PRIVMSG command to a user or a channel.
+// SendTo sends a PRIVMSG command to a user or a channel specified on 'dest' param.
 func (a *Amigo) SendTo(dest, msg string) error {
     command := "PRIVMSG " + dest + " :" + msg
 
@@ -84,14 +84,16 @@ func (a *Amigo) listen() {
 // handleMessage gets messages received on the IRC network and parses them to recognize commands.
 func (a *Amigo) handleMessage(msg *irc.Message) {
     log.Println(msg.String())
+    /* Extra debug
     if msg.Prefix != nil {
-        log.Println("Nick: " + msg.Prefix.Name)
+        log.Println("Name: " + msg.Prefix.Name)
         log.Println("User: " + msg.Prefix.User)
         log.Println("Host: " + msg.Prefix.Host)
     }
     log.Println("Command: " + msg.Command)
     log.Println("Params: " + strings.Join(msg.Params, " "))
     log.Println("Trailing: " + msg.Trailing)
+    */
 
     // Handle PING
     if msg.Command == "PING" {
@@ -101,34 +103,35 @@ func (a *Amigo) handleMessage(msg *irc.Message) {
     // Handle message
     if msg.Command == "PRIVMSG" {
         // Are you talking to me?
-        for _, id := range a.mem.Identities {
-            if strings.HasPrefix(msg.Trailing, id) {
-                a.handleCommand(id, msg)
-                break
-            }
+        if strings.HasPrefix(msg.Trailing, a.mem.Nick) {
+            a.handleCommand(msg)
+        } else {
+            // Free talk
+            a.handleConversation(msg)
         }
-
-        // TODO: Free talk
-
     }
 }
 
-// handleCommand parses and dispatches commands sent directly to the bot using an identity.
-func (a *Amigo) handleCommand(identity string, msg *irc.Message) {
-    // TODO: Create Command struct
-    var dest, command, receiver string
-
-    receiver = strings.Join(msg.Params, " ")
-
-    // Talking on private?
-    if receiver == a.mem.Nick && msg.Prefix != nil {
-        dest = msg.Prefix.Name
-    } else {
-        // Talking on a channel
-        dest = receiver
+// handleCommand parses and dispatches commands sent directly to the bot using the nick.
+func (a *Amigo) handleCommand(msg *irc.Message) {
+    // Parse command
+    cmd, err := a.ParseCommand(msg)
+    if err != nil {
+        log.Println("AMIGO ERROR: " + err.Error())
+        return
     }
 
-    command = strings.TrimSpace(msg.Trailing[len(identity):])
+    switch {
+    case cmd.Method == "say":
+        a.Say(cmd)
+    }
+}
 
-    a.SendTo(dest, command + "?")
+func (a *Amigo) handleConversation(msg *irc.Message) {
+    // Nothing yet...
+}
+
+// Say works like an Echo. Takes a Command and returns the params to the sender.
+func (a *Amigo) Say(c *Command) {
+    a.SendTo(c.Dest, strings.Join(c.Params, " "))
 }

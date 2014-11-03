@@ -5,16 +5,19 @@ import (
     "log"
     "encoding/xml"
     "os"
+    "time"
 )
 
 const memoryFileName = "amigo-memory.xml"
 
+// Memory stores all Amigo's knowledge.
+// Persists itself to a fixed XML file which will be created automatically
+// on first call into the directory from where the Amigo bot its executed
 type Memory struct {
     // Connection params
-	Host, Channel, Nick string
+	Host, Channel, Nick, Password string
 
     Masters []string
-    Identities []string
 }
 
 // LoadMemory creates and returns a new Memory instance and initializes it.
@@ -34,6 +37,8 @@ func LoadMemory() *Memory {
         }
     }
 
+    mem.persist()
+
     return mem
 }
 
@@ -42,8 +47,25 @@ func (m *Memory) factoryMemory() {
     m.Host = "irc.freenode.org:6667"
 	m.Channel = "#amigo-bot"
 	m.Nick = "amigobot"
-	m.Masters = []string{"amigo-master"}
-    m.Identities = []string{"eh amigo!"}
+
+    // Generate password based on host data
+    var pass string
+    pass = "eh,amigo!"
+
+    hostname, err := os.Hostname()
+    if err == nil {
+        pass += hostname
+    }
+
+    pid := os.Getpid()
+    pass += string(pid)
+
+    wd, err := os.Getwd()
+    if err == nil {
+        pass += wd
+    }
+
+	m.Password = pass
 
     m.Write()
 }
@@ -56,11 +78,22 @@ func (m *Memory) Write() {
         return
     }
 
-    log.Println("AMIGO: Writing memory to " + memoryFileName)
-
     err = ioutil.WriteFile(memoryFileName, append([]byte(xml.Header), raw...), os.ModePerm)
     if err != nil {
         log.Println("AMIGO ERROR: Cannot write memory file, please check for permissions.")
         return
     }
+}
+
+// persist writes the memory to the memory file every 10 seconds.
+func (m *Memory) persist() {
+    log.Println("AMIGO: Writing memory to " + memoryFileName)
+
+    go func() {
+        for {
+            time.Sleep(10000 * time.Millisecond)
+            m.Write()
+        }
+    }()
+
 }
