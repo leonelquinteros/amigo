@@ -17,7 +17,7 @@ type Memory struct {
     // Connection params
 	Host, Channel, Nick, Password string
 
-    Masters []string
+    Masters []string    `xml:"Masters,omitempty"`
 }
 
 // LoadMemory creates and returns a new Memory instance and initializes it.

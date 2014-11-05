@@ -11,19 +11,21 @@ var param_delimiter = ";;"
 
 // Protocol commands list
 var protocol = []string{
+        "tell me",
         "set master",
         "del master",
         "set nick",
         "set password",
         "join",
         "leave",
-        "sys run",
+        "shutdown",
         "say",
         "say when",
         "cmd say",
         "exec",
         "exec when",
         "cmd exec",
+        "sys run",
 }
 
 
@@ -45,7 +47,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
     for _, cmd := range protocol {
         if strings.HasPrefix(raw, cmd) {
             found = true
-            c.Method = cmd
+            c.Method = strings.ToLower(cmd)
             break
         }
     }

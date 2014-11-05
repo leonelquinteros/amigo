@@ -15,10 +15,15 @@ type Amigo struct {
 
 	// Connection handler
 	conn *irc.Conn
+
+    // Quit receiver
+    quit chan bool
 }
 
 // EhAmigo starts the bot.
 func (a *Amigo) EhAmigo() {
+    a.quit = make(chan bool)
+
     a.mem = LoadMemory()
 
 	// Connect
@@ -71,13 +76,21 @@ func (a *Amigo) init() {
 
 // listen gets all the network stream and dispatches the messages.
 func (a *Amigo) listen() {
+Listen:
 	for {
-		msg, err := a.conn.Decode()
-		if err != nil {
-			log.Fatal("AMIGO ERROR: " + err.Error())
-		}
+        select {
+            case <- a.quit:
+                break Listen
 
-        go a.handleMessage(msg)
+            default:
+                msg, err := a.conn.Decode()
+                if err != nil {
+                    log.Fatal("CONNECTION ERROR: " + err.Error())
+                }
+
+                go a.handleMessage(msg)
+        }
+
 	}
 }
 
@@ -125,8 +138,29 @@ func (a *Amigo) handleCommand(msg *irc.Message) {
     case cmd.Method == "say":
         a.Say(cmd)
 
+    case cmd.Method == "tell me":
+        a.Tell(cmd)
+
     case cmd.Method == "set master":
         a.SetMaster(cmd)
+
+    case cmd.Method == "del master":
+        a.DelMaster(cmd)
+
+    case cmd.Method == "set nick":
+        a.SetNick(cmd)
+
+    case cmd.Method == "set password":
+        a.SetPassword(cmd)
+
+    case cmd.Method == "join":
+        a.Join(cmd)
+
+    case cmd.Method == "leave":
+        a.Leave(cmd)
+
+    case cmd.Method == "shutdown":
+        a.Shutdown()
     }
 }
 
@@ -140,6 +174,15 @@ func (a *Amigo) Say(c *Command) {
 
     if text != "" {
         a.SendTo(c.Dest, text)
+    }
+}
+
+func (a *Amigo) Tell(c *Command) {
+    what := strings.ToLower(strings.TrimSpace(strings.Join(c.Params, " ")))
+
+    switch {
+        case what == "masters" || what == "your masters":
+            a.SendTo(c.Dest, strings.Join(a.mem.Masters, ","))
     }
 }
 
@@ -161,4 +204,73 @@ func (a *Amigo) SetMaster(c *Command) {
     a.mem.Masters = append(a.mem.Masters, master)
 
     a.SendTo(master, "Welcome, master " + master)
+}
+
+func (a *Amigo) DelMaster(c *Command) {
+    master := c.Params[0]
+
+    if master == "" {
+        return
+    }
+
+    if a.mem.Masters != nil {
+        for key, m := range a.mem.Masters {
+            if m == master {
+                a.mem.Masters = append(a.mem.Masters[:key], a.mem.Masters[key+1:]...)
+                break
+            }
+        }
+    }
+
+    a.SendTo(master, "Goodbye " + master + ", i'm not listening to you anymore")
+}
+
+func (a *Amigo) SetNick(c *Command) {
+    nick := c.Params[0]
+
+    if nick == "" {
+        return
+    }
+
+    a.mem.Nick = nick
+    a.Send("NICK " + nick)
+}
+
+
+func (a *Amigo) SetPassword(c *Command) {
+    password := c.Params[0]
+
+    if password == "" {
+        return
+    }
+
+    a.mem.Password = password
+
+    a.SendTo(c.Dest, "Password changed")
+}
+
+func (a *Amigo) Join(c *Command) {
+    channel := c.Params[0]
+
+    if channel == "" {
+        return
+    }
+
+    a.Send("JOIN " + channel)
+}
+
+func (a *Amigo) Leave(c *Command) {
+    channel := c.Params[0]
+
+    if channel == "" {
+        return
+    }
+
+    a.Send("PART " + channel)
+}
+
+func (a *Amigo) Shutdown() {
+    a.Send("QUIT Shutting down")
+
+    a.quit <- true
 }
