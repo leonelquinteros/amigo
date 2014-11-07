@@ -142,7 +142,12 @@ func (a *Amigo) handleCommand(msg *irc.Message) {
 		return
 	}
 
-	switch {
+	a.dispatchCommand(cmd)
+}
+
+// dispatchCOmmand matches a command name to a method and executes it.
+func (a *Amigo) dispatchCommand(cmd *Command) {
+    switch {
 	case cmd.Method == "say":
 		a.Say(cmd)
 
@@ -169,6 +174,16 @@ func (a *Amigo) handleCommand(msg *irc.Message) {
 
 	case cmd.Method == "shutdown":
 		a.Shutdown()
+
+    case cmd.Method == "cmd":
+        var c string
+
+        if len(cmd.Params) > 1 {
+            c = cmd.Params[1]
+        }
+
+        a.DefineCommand(cmd.Params[0], c)
+
 	}
 }
 
@@ -280,4 +295,18 @@ func (a *Amigo) Shutdown() {
 	a.Send("QUIT Shutting down")
 
 	a.quit <- true
+}
+
+func (a *Amigo) DefineCommand(keyword, command string) {
+    // Delete
+    if command == "" {
+        if _, ok := a.mem.Commands[keyword]; ok {
+            delete(a.mem.Commands, keyword)
+        }
+
+        return
+    }
+
+    // Set new
+    a.mem.Commands[keyword] = command
 }

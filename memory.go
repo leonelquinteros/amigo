@@ -15,6 +15,7 @@ const memoryFileName = "amigo-memory.xml"
 // on first call into the directory from where the Amigo bot its executed
 type Memory struct {
 	Masters []string `xml:"Masters,omitempty"`
+    Commands map[string]string `xml:"Commands,omitempty"`
 }
 
 // LoadMemory creates and returns a new Memory instance and initializes it.

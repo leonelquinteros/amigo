@@ -18,12 +18,10 @@ var protocol = []string{
 	"join",
 	"leave",
 	"shutdown",
+    "cmd",
 	"say",
 	"say when",
-	"cmd say",
-	"exec",
 	"exec when",
-	"cmd exec",
 	"sys run",
 }
 
@@ -49,6 +47,16 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
 			break
 		}
 	}
+    if !found {
+        // Custom command
+        for keyword, cmd := range a.mem.Commands {
+            if strings.HasPrefix(raw, keyword) {
+                found = true
+                c.Method = strings.ToLower(cmd)
+                break
+            }
+        }
+    }
 	if !found {
 		return nil, errors.New("Command not found")
 	}
