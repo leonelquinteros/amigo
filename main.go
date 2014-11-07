@@ -12,7 +12,7 @@
 //
 //  If PARAM_DELIMITER has to be included as part of a param value (usually not needed), you can escape it using a backslash \,
 //  Any combination of backslash and the param delimiter will be replaced by the param delimiter itself at parsing time.
-// 
+//
 package main
 
 func main() {
