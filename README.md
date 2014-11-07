@@ -1,3 +1,10 @@
-Amigo IRC BOT
-=============
+# Amigo IRC BOT
 
+
+## Configuration
+
+
+## Executing commands
+
+
+## Commands list

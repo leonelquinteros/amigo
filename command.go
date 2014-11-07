@@ -38,7 +38,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
 	c := new(Command)
 
 	// Remove nick from message
-	raw := strings.TrimSpace(msg.Trailing[len(a.mem.Nick):])
+	raw := strings.TrimSpace(msg.Trailing[len(a.Nick):])
 
 	// Command
 	found := false
@@ -64,7 +64,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
 	// Talking on a channel or private?
 	receiver := strings.Join(msg.Params, " ")
 
-	if receiver == a.mem.Nick && msg.Prefix != nil {
+	if receiver == a.Nick && msg.Prefix != nil {
 		c.Dest = msg.Prefix.Name
 	} else {
 		// Talking on a channel
@@ -84,7 +84,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
 			}
 		}
 	}
-	if a.mem.Password == c.Params[len(c.Params)-1] {
+	if a.Password == c.Params[len(c.Params)-1] {
 		auth = true
 		c.Params = c.Params[:len(c.Params)-1]
 	}
