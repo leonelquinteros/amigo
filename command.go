@@ -27,6 +27,7 @@ var protocol = []string{
 
 type Command struct {
 	Method string
+    Keyword string
 	Params []string
 	Dest   string
 }
@@ -44,6 +45,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
 		if strings.HasPrefix(raw, cmd) {
 			found = true
 			c.Method = strings.ToLower(cmd)
+            c.Keyword = cmd
 			break
 		}
 	}
@@ -53,6 +55,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
             if strings.HasPrefix(raw, keyword) {
                 found = true
                 c.Method = strings.ToLower(cmd)
+                c.Keyword = keyword
                 break
             }
         }
@@ -62,7 +65,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
 	}
 
 	// Params
-	raw = strings.TrimSpace(raw[len(c.Method):])
+	raw = strings.TrimSpace(raw[len(c.Keyword):])
 
 	c.Params = strings.Split(raw, " "+param_delimiter)
 	for key, param := range c.Params {

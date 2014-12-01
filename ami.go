@@ -206,6 +206,9 @@ func (a *Amigo) Tell(c *Command) {
 	switch {
 	case what == "masters" || what == "your masters":
 		a.SendTo(c.Dest, strings.Join(a.mem.Masters, ","))
+    default:
+        // Echo
+        a.SendTo(c.Dest, what)
 	}
 }
 
@@ -298,7 +301,7 @@ func (a *Amigo) Shutdown() {
 }
 
 func (a *Amigo) DefineCommand(keyword, command string) {
-    // Delete
+    // Delete if empty
     if command == "" {
         if _, ok := a.mem.Commands[keyword]; ok {
             delete(a.mem.Commands, keyword)
