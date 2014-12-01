@@ -20,9 +20,9 @@ var protocol = []string{
 	"shutdown",
     "cmd",
 	"say",
+    "sys run", // Fucking dangerous
 	"say when",
 	"exec when",
-	"sys run",
 }
 
 type Command struct {
