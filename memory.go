@@ -14,8 +14,8 @@ const memoryFileName = "amigo-memory.json"
 // Persists itself to a fixed JSON file which will be created automatically
 // on first call into the directory from where the Amigo bot its executed
 type Memory struct {
-	Masters []string
-    Commands map[string]string
+	Masters  []string
+	Commands map[string]string
 }
 
 // LoadMemory creates and returns a new Memory instance and initializes it.
@@ -33,9 +33,9 @@ func LoadMemory() *Memory {
 		}
 	}
 
-    if mem.Commands == nil {
-        mem.Commands = make(map[string]string) // Init
-    }
+	if mem.Commands == nil {
+		mem.Commands = make(map[string]string) // Init
+	}
 
 	mem.persist()
 

@@ -23,4 +23,7 @@ _testmain.go
 *.test
 *.prof
 
-amigo-memory.xml
+amigo-memory.json
+.project
+.settings
+.buildpath

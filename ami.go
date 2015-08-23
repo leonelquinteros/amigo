@@ -3,16 +3,16 @@ package main
 import (
 	"errors"
 	"log"
+	"os/exec"
 	"strings"
-    "os/exec"
-    "time"
+	"time"
 
 	"github.com/sorcix/irc"
 )
 
 // This is the bot
 type Amigo struct {
-    // Config
+	// Config
 	Host, Channel, Nick, Password string
 
 	// Memory
@@ -27,10 +27,10 @@ type Amigo struct {
 
 // EhAmigo starts the bot.
 func (a *Amigo) EhAmigo(host, channel, nick, password string) {
-    a.Host = host
-    a.Channel = channel
-    a.Nick = nick
-    a.Password = password
+	a.Host = host
+	a.Channel = channel
+	a.Nick = nick
+	a.Password = password
 
 	a.quit = make(chan bool)
 
@@ -56,22 +56,22 @@ func (a *Amigo) Send(msg string) error {
 
 // SendTo sends a PRIVMSG command to a user or a channel specified on 'dest' param.
 func (a *Amigo) SendTo(dest, msg string) (err error) {
-    clean := strings.Replace(msg, "\r\n", "\n", -1)
-    lines := strings.Split(clean, "\n")
+	clean := strings.Replace(msg, "\r\n", "\n", -1)
+	lines := strings.Split(clean, "\n")
 
-    for _, l := range lines {
-        if l == "" {
-            continue
-        }
+	for _, l := range lines {
+		if l == "" {
+			continue
+		}
 
-        command := "PRIVMSG " + dest + " :" + l
-        err = a.Send(command)
-        if err != nil {
-            return err
-        }
-        
-        time.Sleep(500 * time.Millisecond) // Prevent Excess Flood
-    }
+		command := "PRIVMSG " + dest + " :" + l
+		err = a.Send(command)
+		if err != nil {
+			return err
+		}
+
+		time.Sleep(500 * time.Millisecond) // Prevent Excess Flood
+	}
 
 	return nil
 }
@@ -121,6 +121,14 @@ Listen:
 
 // handleMessage gets messages received on the IRC network and parses them to recognize commands.
 func (a *Amigo) handleMessage(msg *irc.Message) {
+	// Handle panics
+	defer func() {
+		if r := recover(); r != nil {
+			log.Println("I'm panicking! ", r)
+		}
+	}()
+
+	// Log message
 	log.Println(msg.String())
 
 	// Handle PING
@@ -152,9 +160,12 @@ func (a *Amigo) handleCommand(msg *irc.Message) {
 	a.dispatchCommand(cmd)
 }
 
-// dispatchCOmmand matches a command name to a method and executes it.
+// dispatchCommand matches a command name to a method and executes it.
 func (a *Amigo) dispatchCommand(cmd *Command) {
-    switch {
+	switch {
+	case cmd.Method == "help":
+		a.Help(cmd)
+
 	case cmd.Method == "say":
 		a.Say(cmd)
 
@@ -182,23 +193,28 @@ func (a *Amigo) dispatchCommand(cmd *Command) {
 	case cmd.Method == "shutdown":
 		a.Shutdown()
 
-    case cmd.Method == "cmd":
-        var c string
+	case cmd.Method == "cmd":
+		var c string
 
-        if len(cmd.Params) > 1 {
-            c = cmd.Params[1]
-        }
+		if len(cmd.Params) > 1 {
+			c = cmd.Params[1]
+		}
 
-        a.DefineCommand(cmd.Params[0], c)
+		a.DefineCommand(cmd.Params[0], c)
 
-    case cmd.Method == "sys run":
-        a.SysRun(cmd)
+	case cmd.Method == "sys run":
+		a.SysRun(cmd)
 
 	}
 }
 
 func (a *Amigo) handleConversation(msg *irc.Message) {
 	// Nothing yet...
+}
+
+// Help displays help information about commands.
+func (a *Amigo) Help(c *Command) {
+	a.SendTo(c.Dest, "Help in progress...")
 }
 
 // Say works like an Echo. Takes a Command and returns the params to the sender.
@@ -222,9 +238,9 @@ func (a *Amigo) Tell(c *Command) {
 	switch {
 	case what == "masters" || what == "your masters":
 		a.SendTo(c.Dest, strings.Join(a.mem.Masters, ","))
-    default:
-        // Echo
-        a.SendTo(c.Dest, what)
+	default:
+		// Echo
+		a.SendTo(c.Dest, what)
 	}
 }
 
@@ -232,91 +248,97 @@ func (a *Amigo) Tell(c *Command) {
 // A master nick is a user who doesn't needs to pass the password parameter to exec a command to the bot.
 // Is recommended that the first action to the bot is to set the first master to avoid spreading the password on public IRC conversations.
 func (a *Amigo) SetMaster(c *Command) {
-	master := c.Params[0]
-
-	if master == "" {
+	if len(c.Params) < 1 {
+		return
+	}
+	if c.Params[0] == "" {
 		return
 	}
 
 	if a.mem.Masters != nil {
 		for _, m := range a.mem.Masters {
-			if m == master {
+			if m == c.Params[0] {
 				return
 			}
 		}
 	}
 
-	a.mem.Masters = append(a.mem.Masters, master)
+	a.mem.Masters = append(a.mem.Masters, c.Params[0])
 
-	a.SendTo(master, "Welcome, master "+master)
+	a.SendTo(c.Params[0], "Welcome, master "+c.Params[0])
 }
 
 // DelMaster will remove a master nick from memory.
 func (a *Amigo) DelMaster(c *Command) {
-	master := c.Params[0]
-
-	if master == "" {
+	if len(c.Params) < 1 {
+		return
+	}
+	if c.Params[0] == "" {
 		return
 	}
 
 	if a.mem.Masters != nil {
 		for key, m := range a.mem.Masters {
-			if m == master {
+			if m == c.Params[0] {
 				a.mem.Masters = append(a.mem.Masters[:key], a.mem.Masters[key+1:]...)
 				break
 			}
 		}
 	}
 
-	a.SendTo(master, "Goodbye "+master+", i'm not listening to you anymore")
+	a.SendTo(c.Params[0], "Goodbye "+c.Params[0]+", i'm not listening to you anymore")
 }
 
 // SetNick will make the bot to change its nick.
 // Be careful with Nick Servers and already reserved nick names.
 func (a *Amigo) SetNick(c *Command) {
-	nick := c.Params[0]
-
-	if nick == "" {
+	if len(c.Params) < 1 {
+		return
+	}
+	if c.Params[0] == "" {
 		return
 	}
 
-	a.Nick = nick
-	a.Send("NICK " + nick)
+	a.Nick = c.Params[0]
+	a.Send("NICK " + c.Params[0])
 }
 
 // SetPassword will change the master password on the bots memory.
 func (a *Amigo) SetPassword(c *Command) {
-	password := c.Params[0]
-
-	if password == "" {
+	if len(c.Params) < 1 {
+		return
+	}
+	if c.Params[0] == "" {
 		return
 	}
 
-	a.Password = password
+	a.Password = c.Params[0]
 
 	a.SendTo(c.Dest, "Password changed")
 }
 
 // Join the IRC Channel provided.
 func (a *Amigo) Join(c *Command) {
-	channel := c.Params[0]
-
-	if channel == "" {
+	if len(c.Params) < 1 {
+		return
+	}
+	if c.Params[0] == "" {
 		return
 	}
 
-	a.Send("JOIN " + channel)
+	a.Send("JOIN " + c.Params[0])
 }
 
 // Leave the IRC channel provided.
 func (a *Amigo) Leave(c *Command) {
-	channel := c.Params[0]
-
-	if channel == "" {
+	if len(c.Params) < 1 {
+		return
+	}
+	if c.Params[0] == "" {
 		return
 	}
 
-	a.Send("PART " + channel)
+	a.Send("PART " + c.Params[0])
 }
 
 // Shutdown will gracefully disconnect from the IRC server and terminate the running process on the host machine.
@@ -328,38 +350,42 @@ func (a *Amigo) Shutdown() {
 
 // DefineCommand takes a new keyword for an existent command and uses it as an alias.
 func (a *Amigo) DefineCommand(keyword, command string) {
-    // Delete if empty
-    if command == "" {
-        if _, ok := a.mem.Commands[keyword]; ok {
-            delete(a.mem.Commands, keyword)
-        }
+	// Delete if empty
+	if command == "" {
+		if _, ok := a.mem.Commands[keyword]; ok {
+			delete(a.mem.Commands, keyword)
+		}
 
-        return
-    }
+		return
+	}
 
-    // Set new
-    a.mem.Commands[keyword] = command
+	// Set new
+	a.mem.Commands[keyword] = command
 }
 
 // DANGER: SysRun will execute the command provided on the host machine.
 // When possible, it will return the command output to the IRC channel.
 func (a *Amigo) SysRun(c *Command) {
-    if c.Params[0] == "" {
-        return
-    }
-
-    var sysCmd *exec.Cmd
-
-    if len(c.Params) > 1 {
-        sysCmd = exec.Command(c.Params[0], c.Params[1:]...)
-    } else {
-        sysCmd = exec.Command(c.Params[0])
-    }
-
-    out, err := sysCmd.Output()
-    if err != nil {
-		a.SendTo(c.Dest, "SYS ERROR: " + err.Error())
+	if len(c.Params) < 1 {
+		return
 	}
 
-    a.SendTo(c.Dest, string(out))
+	if c.Params[0] == "" {
+		return
+	}
+
+	var sysCmd *exec.Cmd
+
+	if len(c.Params) > 1 {
+		sysCmd = exec.Command(c.Params[0], c.Params[1:]...)
+	} else {
+		sysCmd = exec.Command(c.Params[0])
+	}
+
+	out, err := sysCmd.Output()
+	if err != nil {
+		a.SendTo(c.Dest, "SYS ERROR: "+err.Error())
+	}
+
+	a.SendTo(c.Dest, string(out))
 }
