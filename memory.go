@@ -14,8 +14,14 @@ const memoryFileName = "amigo-memory.json"
 // Persists itself to a fixed JSON file which will be created automatically
 // on first call into the directory from where the Amigo bot its executed
 type Memory struct {
-	Masters  []string
+	// Master nicks
+	Masters []string
+
+	// Commands definitions
 	Commands map[string]string
+
+	// 'exec when' command configuration
+	AutoCmd map[string]string
 }
 
 // LoadMemory creates and returns a new Memory instance and initializes it.
@@ -33,8 +39,12 @@ func LoadMemory() *Memory {
 		}
 	}
 
+	// Init
 	if mem.Commands == nil {
-		mem.Commands = make(map[string]string) // Init
+		mem.Commands = make(map[string]string)
+	}
+	if mem.AutoCmd == nil {
+		mem.AutoCmd = make(map[string]string)
 	}
 
 	mem.persist()
@@ -44,7 +54,7 @@ func LoadMemory() *Memory {
 
 // Write saves memory to an JSON file
 func (m *Memory) Write() {
-	raw, err := json.MarshalIndent(m, "", "    ")
+	raw, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {
 		log.Println("AMIGO ERROR: Memory data cannot be encoded to be saved: " + err.Error())
 		return

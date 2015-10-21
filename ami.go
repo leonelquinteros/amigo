@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"os/exec"
@@ -10,7 +11,7 @@ import (
 	"github.com/sorcix/irc"
 )
 
-// This is the bot
+// Amigo is the bot object
 type Amigo struct {
 	// Config
 	Host, Channel, Nick, Password string
@@ -124,7 +125,7 @@ func (a *Amigo) handleMessage(msg *irc.Message) {
 	// Handle panics
 	defer func() {
 		if r := recover(); r != nil {
-			log.Println("I'm panicking! ", r)
+			log.Println("!!! I'm panicking !!! ", r)
 		}
 	}()
 
@@ -142,7 +143,7 @@ func (a *Amigo) handleMessage(msg *irc.Message) {
 		if strings.HasPrefix(msg.Trailing, a.Nick) {
 			a.handleCommand(msg)
 		} else {
-			// Free talk
+			// Free talk ('say when', 'cmd when')
 			a.handleConversation(msg)
 		}
 	}
@@ -193,6 +194,15 @@ func (a *Amigo) dispatchCommand(cmd *Command) {
 	case cmd.Method == "shutdown":
 		a.Shutdown()
 
+	case cmd.Method == "exec when":
+		var exec string
+
+		if len(cmd.Params) > 1 {
+			exec = cmd.Params[1]
+		}
+
+		a.ExecWhen(cmd.Params[0], exec)
+
 	case cmd.Method == "cmd":
 		var c string
 
@@ -209,12 +219,47 @@ func (a *Amigo) dispatchCommand(cmd *Command) {
 }
 
 func (a *Amigo) handleConversation(msg *irc.Message) {
-	// Nothing yet...
+	// Who to answer?
+	who := a.getDestinatary(msg)
+
+	// Check commands
+	for k, v := range a.mem.AutoCmd {
+		if strings.Contains(msg.Trailing, k) {
+			// Create command
+			c, err := a.getCommand(v)
+			if err != nil {
+				log.Println("AMIGO ERROR: " + err.Error())
+				return
+			}
+			c.Dest = who
+
+			a.dispatchCommand(c)
+		}
+	}
 }
 
 // Help displays help information about commands.
 func (a *Amigo) Help(c *Command) {
-	a.SendTo(c.Dest, "Help in progress...")
+	help := `-- Amigobot help --
+I can be controlled through commands sent to me. 
+I'll will only answer to commands that starts with my nick in the form: 
+[NICK] [COMMAND] [[PARAM_DELIMITER] [PARAM]]...
+Commands:
+- help: This very command.
+- say: Makes me say something.
+- tell me: Display information about myself.
+- set master: Sets a new master.
+- del master: Deletes an existent master.
+- set password: Changes the master password.
+- join: Makes me join a channel.
+- leave: Makes me leave a channel.
+- shutdown: Makes me to kill myself.
+- cmd: Defines a new command.
+- exec when: Defines a command to execute when somebody says something.
+- sys run: Runs a command in the local system (DANGER)
+`
+
+	a.SendTo(c.Dest, help)
 }
 
 // Say works like an Echo. Takes a Command and returns the params to the sender.
@@ -238,6 +283,11 @@ func (a *Amigo) Tell(c *Command) {
 	switch {
 	case what == "masters" || what == "your masters":
 		a.SendTo(c.Dest, strings.Join(a.mem.Masters, ","))
+
+	case what == "memory":
+		raw, _ := json.MarshalIndent(a.mem, "", "  ")
+		a.SendTo(c.Dest, string(raw))
+
 	default:
 		// Echo
 		a.SendTo(c.Dest, what)
@@ -363,7 +413,22 @@ func (a *Amigo) DefineCommand(keyword, command string) {
 	a.mem.Commands[keyword] = command
 }
 
-// DANGER: SysRun will execute the command provided on the host machine.
+// ExecWhen defines commands to execute when somebody in the channel (or private message) says something.
+func (a *Amigo) ExecWhen(when, exec string) {
+	// Delete if empty
+	if exec == "" {
+		if _, ok := a.mem.AutoCmd[when]; ok {
+			delete(a.mem.AutoCmd, when)
+		}
+
+		return
+	}
+
+	// Set new
+	a.mem.AutoCmd[when] = exec
+}
+
+// SysRun will execute the command provided on the host machine.
 // When possible, it will return the command output to the IRC channel.
 func (a *Amigo) SysRun(c *Command) {
 	if len(c.Params) < 1 {
