@@ -1,5 +1,3 @@
-// Amigo is an IRC bot that learns to talk from its masters.
-// The entire bot can be set up through IRC commands as follows:
 package main
 
 import (
