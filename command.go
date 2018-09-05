@@ -2,8 +2,9 @@ package amigo
 
 import (
 	"errors"
-	"github.com/sorcix/irc"
 	"strings"
+
+	"github.com/sorcix/irc"
 )
 
 // Parameter delimiter string.
@@ -68,7 +69,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
 
 	// Check auth
 	if msg.Prefix == nil || msg.Prefix.Name == "" {
-		return nil, errors.New("Empty user not authorized.")
+		return nil, errors.New("Empty user not authorized")
 	}
 	auth := false
 	if a.mem.Masters != nil {
@@ -84,7 +85,7 @@ func (a *Amigo) ParseCommand(msg *irc.Message) (*Command, error) {
 		c.Params = c.Params[:len(c.Params)-1]
 	}
 	if !auth {
-		return nil, errors.New("User not authorized.")
+		return nil, errors.New("User not authorized")
 	}
 
 	return c, nil
@@ -108,10 +109,14 @@ func (a *Amigo) getCommand(raw string) (*Command, error) {
 		// Custom command
 		for keyword, cmd := range a.mem.Commands {
 			if strings.HasPrefix(raw, keyword) {
-				found = true
-				c.Method = strings.ToLower(cmd)
-				c.Keyword = keyword
-				break
+				return a.getCommand(cmd)
+
+				/*
+					found = true
+					c.Method = strings.ToLower(cmd)
+					c.Keyword = keyword
+					break
+				*/
 			}
 		}
 	}

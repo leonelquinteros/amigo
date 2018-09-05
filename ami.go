@@ -106,6 +106,7 @@ Listen:
 	for {
 		select {
 		case <-a.quit:
+			a.Send("QUIT Shutting down")
 			break Listen
 
 		default:
@@ -207,7 +208,7 @@ func (a *Amigo) dispatchCommand(cmd *Command) {
 		var c string
 
 		if len(cmd.Params) > 1 {
-			c = cmd.Params[1]
+			c = strings.Join(cmd.Params[1:], " "+paramDelimiter)
 		}
 
 		a.DefineCommand(cmd.Params[0], c)
@@ -393,8 +394,6 @@ func (a *Amigo) Leave(c *Command) {
 
 // Shutdown will gracefully disconnect from the IRC server and terminate the running process on the host machine.
 func (a *Amigo) Shutdown() {
-	a.Send("QUIT Shutting down")
-
 	a.quit <- true
 }
 
